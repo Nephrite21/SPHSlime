@@ -1,0 +1,38 @@
+#include "/Engine/Public/Platform.ush"
+
+// Structured buffer for input vectors
+StructuredBuffer<float3> InputVectors;
+// Output UAV buffer
+RWStructuredBuffer<float3> OutputVectors;
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void InitializeParticle(
+    uint3 GroupId : SV_GroupID,
+    uint3 DispatchThreadId : SV_DispatchThreadID,
+    uint3 GroupThreadId : SV_GroupThreadID
+)
+{
+    uint ThreadId = DispatchThreadId.x;
+    
+    // Get number of vectors from the buffer dimension
+    uint NumVectors;
+    uint Stride;
+    InputVectors.GetDimensions(NumVectors, Stride);
+    
+    // Make sure we don't go out of bounds
+    if (ThreadId < NumVectors)
+    {
+        // Read input vector
+        float3 InVec = InputVectors[ThreadId];
+        
+        // Example processing - you can modify this part based on your needs
+        // Here we're just applying a simple transformation
+        float3 OutVec;
+        OutVec.x = InVec.x * 2.0f; // Double x component
+        OutVec.y = InVec.y + 1.0f; // Add 1 to y component
+        OutVec.z = InVec.z * -1.0f; // Invert z component
+        
+        // Write to output buffer
+        OutputVectors[ThreadId] = OutVec;
+    }
+}
