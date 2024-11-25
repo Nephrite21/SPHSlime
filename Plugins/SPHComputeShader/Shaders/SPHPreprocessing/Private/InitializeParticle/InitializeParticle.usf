@@ -1,7 +1,7 @@
 #include "/Engine/Public/Platform.ush"
 
-StructuredBuffer<double4> InputVectors;
-RWStructuredBuffer<double4> OutputVectors : register(u0);
+StructuredBuffer<double3> InputVectors;
+RWStructuredBuffer<double3> OutputVectors : register(u0);
 
 int NumParticles;
 float SpawnLength;
@@ -17,5 +17,5 @@ void InitializeParticle(
     {
         return;
     }
-    OutputVectors[0] = double4(1.0, 1.0, 1.0, 0.0);
+    OutputVectors[ThreadId] = double3(1.0, 1.0, 1.0);
 }
