@@ -16,6 +16,9 @@ struct SPHPREPROCESSING_API FInitializeParticleDispatchParams
 
 	
 	TArray<FVector> InputVectors;
+	int NumParticles;
+	float SpawnLength;
+
 	TArray<FVector> OutputVectors;
 	
 	
@@ -80,8 +83,17 @@ public:
 	// Execute the actual load
 	virtual void Activate() override {
 		// Create a dispatch parameters struct and fill it the input array with our args
+		UE_LOG(LogTemp, Log, TEXT("InputVectors Size: %d"), InputVectors.Num());
+		if (InputVectors.Num() == 0) {
+			UE_LOG(LogTemp, Warning, TEXT("InputVectors is empty"));
+			return;
+		}
+
 		FInitializeParticleDispatchParams Params(1, 1, 1);
 		Params.InputVectors = InputVectors;
+		Params.NumParticles = NumParticles;
+		UE_LOG(LogTemp, Log, TEXT("NumParticles : %d"), NumParticles);
+		Params.SpawnLength = SpawnLength;
 
 		TFunction<void(const TArray<FVector>&)> Callback = [this](const TArray<FVector>& OutVectors) {
 			this->Completed.Broadcast(OutVectors);
@@ -94,9 +106,11 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UInitializeParticleLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector>& InputVectors) {
+	static UInitializeParticleLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject,int NumParticles, float spawnLength, const TArray<FVector>& InputVectors) {
 		UInitializeParticleLibrary_AsyncExecution* Action = NewObject<UInitializeParticleLibrary_AsyncExecution>();
 		Action->InputVectors = InputVectors;
+		Action->NumParticles = NumParticles;
+		Action->SpawnLength = spawnLength;
 		Action->RegisterWithGameInstance(WorldContextObject);
 
 		return Action;
@@ -106,5 +120,7 @@ public:
 	FOnInitializeParticleLibrary_AsyncExecutionCompleted Completed;
 
 	TArray<FVector> InputVectors;
+	int NumParticles;
+	float SpawnLength;
 	
 };

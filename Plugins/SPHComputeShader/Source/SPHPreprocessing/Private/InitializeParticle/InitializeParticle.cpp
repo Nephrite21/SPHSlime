@@ -52,7 +52,8 @@ public:
 		// SHADER_PARAMETER_SRV(Texture2D<FVector4f>, MyReadOnlyTexture) // On the shader side: Texture2D<float4> MyReadOnlyTexture;
 
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
-
+		SHADER_PARAMETER(int, NumParticles)
+		SHADER_PARAMETER(float, SpawnLength)
 		
 		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, InputVectors)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, OutputVectors)
@@ -101,7 +102,6 @@ IMPLEMENT_GLOBAL_SHADER(FInitializeParticle, "/SPHPreprocessingShaders/Initializ
 
 void FInitializeParticleInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FInitializeParticleDispatchParams Params, TFunction<void(const TArray<FVector>& OutputVector)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
-
 	{
 		SCOPE_CYCLE_COUNTER(STAT_InitializeParticle_Execute);
 		DECLARE_GPU_STAT(InitializeParticle)
@@ -125,7 +125,7 @@ void FInitializeParticleInterface::DispatchRenderThread(FRHICommandListImmediate
 			const void* RawData = Params.InputVectors.GetData();
 			int NumVectors = Params.InputVectors.Num();
 			int VectorSize = sizeof(FVector);
-			int InputSize = sizeof(int);
+			//int InputSize = sizeof(int);
 			FRDGBufferRef InputBuffer = CreateStructuredBuffer(
 				GraphBuilder,
 				TEXT("InputVectorBuffer"),
@@ -135,10 +135,15 @@ void FInitializeParticleInterface::DispatchRenderThread(FRHICommandListImmediate
 				VectorSize * NumVectors
 			);
 
+			//ÀÎÇ² ¼³Á¤
 			PassParameters->InputVectors = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(InputBuffer));
 
+			PassParameters->NumParticles = Params.NumParticles;
+			PassParameters->SpawnLength = Params.SpawnLength;
+
+
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(
-				FRDGBufferDesc::CreateBufferDesc(sizeof(FVector), NumVectors),
+				FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector), NumVectors),
 				TEXT("OutputBuffer"));
 
 			PassParameters->OutputVectors = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer));
