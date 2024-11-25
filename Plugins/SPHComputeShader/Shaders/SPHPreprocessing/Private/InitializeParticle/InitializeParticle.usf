@@ -1,15 +1,14 @@
 #include "/Engine/Public/Platform.ush"
 
+StructuredBuffer<double4> InputVectors;
+RWStructuredBuffer<double4> OutputVectors : register(u0);
+
 int NumParticles;
 float SpawnLength;
-StructuredBuffer<float3> InputVectors;
-RWStructuredBuffer<float3> OutputVectors : register(u0);
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void InitializeParticle(
-    uint3 GroupId : SV_GroupID,
-    uint3 DispatchThreadId : SV_DispatchThreadID,
-    uint3 GroupThreadId : SV_GroupThreadID
+    uint3 DispatchThreadId : SV_DispatchThreadID
 )
 {
     uint ThreadId = DispatchThreadId.x;
@@ -18,5 +17,5 @@ void InitializeParticle(
     {
         return;
     }
-    OutputVectors[ThreadId] = float3(1.0, 1.0, 1.0);
+    OutputVectors[0] = double4(1.0, 1.0, 1.0, 0.0);
 }

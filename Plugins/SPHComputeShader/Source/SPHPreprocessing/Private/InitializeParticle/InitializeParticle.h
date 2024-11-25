@@ -25,6 +25,6 @@
 #include "RenderGraphResources.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 
-#define NUM_THREADS_InitializeParticle_X 10
+#define NUM_THREADS_InitializeParticle_X 256
 #define NUM_THREADS_InitializeParticle_Y 1
 #define NUM_THREADS_InitializeParticle_Z 1
