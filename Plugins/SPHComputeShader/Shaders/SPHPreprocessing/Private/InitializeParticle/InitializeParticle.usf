@@ -6,16 +6,36 @@ RWStructuredBuffer<double3> OutputVectors : register(u0);
 int NumParticles;
 float SpawnLength;
 
+double random(int seed)
+{
+    seed = seed + 1;
+    return double(frac(sin(dot(float2(seed * 1.52158, seed * 1.72301), float2(12.9898, 78.233))) * 43758.5453123));
+}
+
+double random1(int seed)
+{
+    seed = seed + 1;
+    return double(frac(sin(dot(float2(seed * 1.84321, seed * 1.19848), float2(9.1585, 28.842))) * 23672.7819523));
+}
+
+double random2(int seed)
+{
+    seed = seed + 1;
+    return double(frac(sin(dot(float2(seed * 1.38786, seed * 1.91287), float2(19.68723, 38.4532))) * 19875.9153268));
+}
+
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void InitializeParticle(
     uint3 DispatchThreadId : SV_DispatchThreadID
 )
 {
     uint ThreadId = DispatchThreadId.x;
+    uint salt1 = 65;
+    uint salt2 = 15851654;
     
     if (ThreadId >= NumParticles)
     {
         return;
     }
-    OutputVectors[ThreadId] = double3(1.0, 1.0, 1.0);
+    OutputVectors[ThreadId] = double3(random(ThreadId), random1(ThreadId), random2(ThreadId));
 }
