@@ -89,7 +89,7 @@ public:
 			return;
 		}
 
-		FInitializeParticleDispatchParams Params(1, 1, 1);
+		FInitializeParticleDispatchParams Params(NumParticles, 1, 1);
 		Params.InputVectors = InputVectors;
 		Params.NumParticles = NumParticles;
 		UE_LOG(LogTemp, Log, TEXT("NumParticles : %d"), NumParticles);

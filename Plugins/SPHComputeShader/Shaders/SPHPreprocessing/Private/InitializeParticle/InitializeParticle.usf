@@ -30,8 +30,6 @@ void InitializeParticle(
 )
 {
     uint ThreadId = DispatchThreadId.x;
-    uint salt1 = 65;
-    uint salt2 = 15851654;
     
     if (ThreadId >= NumParticles)
     {
