@@ -53,9 +53,12 @@ public:
 
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 
+		SHADER_PARAMETER(int, NumParticles)
+		SHADER_PARAMETER(float, gravity)
 		
-		SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<int>, Input)
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<int>, Output)
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, Positions)
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, Velocities)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, PredictedPositions)
 		
 
 	END_SHADER_PARAMETER_STRUCT()
@@ -99,7 +102,7 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FExternalForceKernel, "/SPHPreprocessingShaders/ExternalForceKernel/ExternalForceKernel.usf", "ExternalForceKernel", SF_Compute);
 
-void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FExternalForceKernelDispatchParams Params, TFunction<void(int OutputVal)> AsyncCallback) {
+void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FExternalForceKernelDispatchParams Params, TFunction<void(const TArray<FVector>& PredictedPositions)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -121,22 +124,48 @@ void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediat
 		if (bIsShaderValid) {
 			FExternalForceKernel::FParameters* PassParameters = GraphBuilder.AllocParameters<FExternalForceKernel::FParameters>();
 
+			//Positions 버퍼 설정
+			const void* RawData = Params.Positions.GetData();
+			int NumVectors = Params.Positions.Num();
+			int VectorSize = sizeof(FVector);
+			FRDGBufferRef PositionsBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("PositionsVectorBuffer"),
+				sizeof(FVector),
+				NumVectors,
+				RawData,
+				VectorSize * NumVectors
+			);
+			PassParameters->Positions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PositionsBuffer));
+
+
+			//Velocities 버퍼 설정
+			const void* RawData1 = Params.Velocities.GetData();
+			FRDGBufferRef VelocitiesBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("VelocitiesVectorBuffer"),
+				sizeof(FVector),
+				NumVectors,
+				RawData1,
+				VectorSize * NumVectors
+			);
+			PassParameters->Velocities = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(VelocitiesBuffer));
+
+
+			//PredictedPositions 버퍼 설정
+			FRDGBufferRef PredictedPositionsBuffer = GraphBuilder.CreateBuffer(
+				FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector), NumVectors),
+				TEXT("PredictedPositionsBuffer"));
+
+			PassParameters->PredictedPositions = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(PredictedPositionsBuffer));
 			
-			const void* RawData = (void*)Params.Input;
-			int NumInputs = 2;
-			int InputSize = sizeof(int);
-			FRDGBufferRef InputBuffer = CreateUploadBuffer(GraphBuilder, TEXT("InputBuffer"), InputSize, NumInputs, RawData, InputSize * NumInputs);
 
-			PassParameters->Input = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(InputBuffer, PF_R32_SINT));
 
-			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(
-				FRDGBufferDesc::CreateBufferDesc(sizeof(int32), 1),
-				TEXT("OutputBuffer"));
+			auto GroupCount = FComputeShaderUtils::GetGroupCount(
+				FIntVector(Params.X, Params.Y, Params.Z),
+				FComputeShaderUtils::kGolden2DGroupSize
+			);
 
-			PassParameters->Output = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_SINT));
-			
-
-			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("ExecuteExternalForceKernel"),
 				PassParameters,
@@ -148,18 +177,21 @@ void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediat
 
 			
 			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteExternalForceKernelOutput"));
-			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, OutputBuffer, 0u);
+			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, PredictedPositionsBuffer, 0u);
 
-			auto RunnerFunc = [GPUBufferReadback, AsyncCallback](auto&& RunnerFunc) -> void {
+			auto RunnerFunc = [GPUBufferReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
 				if (GPUBufferReadback->IsReady()) {
 					
-					int32* Buffer = (int32*)GPUBufferReadback->Lock(1);
-					int OutVal = Buffer[0];
-					
+					FVector* Buffer = (FVector*)GPUBufferReadback->Lock(NumVectors * sizeof(FVector));
+
+					TArray<FVector> PredictedPositions;
+					PredictedPositions.SetNum(NumVectors);
+					FMemory::Memcpy(PredictedPositions.GetData(), Buffer, NumVectors * sizeof(FVector));
+
 					GPUBufferReadback->Unlock();
 
-					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, OutVal]() {
-						AsyncCallback(OutVal);
+					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, PredictedPositions]() {
+						AsyncCallback(PredictedPositions);
 					});
 
 					delete GPUBufferReadback;

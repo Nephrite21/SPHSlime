@@ -1,7 +1,11 @@
 #include "/Engine/Public/Platform.ush"
 
-Buffer<int> Input;
-RWBuffer<int> Output;
+StructuredBuffer<double3> Positions;
+StructuredBuffer<double3> Velocities;
+RWStructuredBuffer<double3> PredictedPositions : register(u0);
+
+int NumParticles;
+float gravity;
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void ExternalForceKernel(
@@ -9,5 +13,4 @@ void ExternalForceKernel(
 	uint GroupIndex : SV_GroupIndex )
 {
 	// Outputs one number
-	Output[0] = Input[0] * Input[1];
 }

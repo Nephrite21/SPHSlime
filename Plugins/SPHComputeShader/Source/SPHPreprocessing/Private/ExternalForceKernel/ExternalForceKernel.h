@@ -25,6 +25,6 @@
 #include "RenderGraphResources.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 
-#define NUM_THREADS_ExternalForceKernel_X 1
+#define NUM_THREADS_ExternalForceKernel_X 256
 #define NUM_THREADS_ExternalForceKernel_Y 1
 #define NUM_THREADS_ExternalForceKernel_Z 1
