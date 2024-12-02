@@ -1,7 +1,9 @@
 #include "/Engine/Public/Platform.ush"
 
-Buffer<int> Input;
-RWBuffer<int> Output;
+RWStructuredBuffer<double3> Positions;
+RWStructuredBuffer<double3> Velocities;
+
+int NumParticles;
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void UpdatePositions(
@@ -9,5 +11,4 @@ void UpdatePositions(
 	uint GroupIndex : SV_GroupIndex )
 {
 	// Outputs one number
-	Output[0] = Input[0] * Input[1];
 }

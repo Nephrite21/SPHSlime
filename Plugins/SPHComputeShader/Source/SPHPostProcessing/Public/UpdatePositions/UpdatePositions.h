@@ -114,5 +114,4 @@ public:
 	TArray<FVector> Positions;
 	TArray<FVector> Velocities;
 	int NumParticles;
-	
 };
