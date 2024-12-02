@@ -57,7 +57,7 @@ public:
 		SHADER_PARAMETER(float, gravity)
 		
 		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, Positions)
-		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, Velocities)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, Velocities)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, PredictedPositions)
 		
 
@@ -102,7 +102,7 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FExternalForceKernel, "/SPHPreprocessingShaders/ExternalForceKernel/ExternalForceKernel.usf", "ExternalForceKernel", SF_Compute);
 
-void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FExternalForceKernelDispatchParams Params, TFunction<void(const TArray<FVector>& PredictedPositions)> AsyncCallback) {
+void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FExternalForceKernelDispatchParams Params, TFunction<void(const TArray<FVector>& PredictedPositions, const TArray<FVector>& Velocities)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -149,7 +149,10 @@ void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediat
 				RawData1,
 				VectorSize * NumVectors
 			);
-			PassParameters->Velocities = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(VelocitiesBuffer));
+			PassParameters->Velocities = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(VelocitiesBuffer));
+
+			PassParameters->gravity = Params.gravity;
+			PassParameters->NumParticles = Params.NumParticles;
 
 
 			//PredictedPositions 버퍼 설정
@@ -177,10 +180,13 @@ void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediat
 
 			
 			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteExternalForceKernelOutput"));
+			FRHIGPUBufferReadback* VelocitiesReadback = new FRHIGPUBufferReadback(TEXT("VelocitiesOutput"));
+			AddEnqueueCopyPass(GraphBuilder, VelocitiesReadback, VelocitiesBuffer, 0u);
 			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, PredictedPositionsBuffer, 0u);
 
-			auto RunnerFunc = [GPUBufferReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
-				if (GPUBufferReadback->IsReady()) {
+			auto RunnerFunc = [GPUBufferReadback, VelocitiesReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
+				if (GPUBufferReadback->IsReady()&& VelocitiesReadback->IsReady()) {
+					
 					
 					FVector* Buffer = (FVector*)GPUBufferReadback->Lock(NumVectors * sizeof(FVector));
 
@@ -190,11 +196,19 @@ void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediat
 
 					GPUBufferReadback->Unlock();
 
-					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, PredictedPositions]() {
-						AsyncCallback(PredictedPositions);
+					FVector* VelocitiesBuffer = (FVector*)VelocitiesReadback->Lock(NumVectors * sizeof(FVector));
+					TArray<FVector> Velocities;
+					Velocities.SetNum(NumVectors);
+					FMemory::Memcpy(Velocities.GetData(), VelocitiesBuffer, NumVectors * sizeof(FVector));
+					VelocitiesReadback->Unlock();
+
+
+					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, PredictedPositions, Velocities]() {
+						AsyncCallback(PredictedPositions, Velocities);
 					});
 
 					delete GPUBufferReadback;
+					delete VelocitiesReadback;
 				} else {
 					AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]() {
 						RunnerFunc(RunnerFunc);

@@ -40,13 +40,13 @@ public:
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
 		FExternalForceKernelDispatchParams Params,
-		TFunction<void(const TArray<FVector>& PredictedPositions)> AsyncCallback
+		TFunction<void(const TArray<FVector>& PredictedPositions, const TArray<FVector>& Velocities)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
 		FExternalForceKernelDispatchParams Params,
-		TFunction<void(const TArray<FVector>& PredictedPositions)> AsyncCallback
+		TFunction<void(const TArray<FVector>& PredictedPositions, const TArray<FVector>& Velocities)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
@@ -59,7 +59,7 @@ public:
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
 		FExternalForceKernelDispatchParams Params,
-		TFunction<void(const TArray<FVector>& PredictedPositions)> AsyncCallback
+		TFunction<void(const TArray<FVector>& PredictedPositions, const TArray<FVector>& Velocities)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
@@ -72,7 +72,9 @@ public:
 
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnExternalForceKernelLibrary_AsyncExecutionCompleted, const TArray<FVector>&, PredictedPositions);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnExternalForceKernelLibrary_AsyncExecutionCompleted,
+	const TArray<FVector>&, PredictedPositions,
+	const TArray<FVector>&, Velocities);
 
 
 UCLASS() // Change the _API to match your project
@@ -92,8 +94,12 @@ public:
 		Params.NumParticles = NumParticles;
 
 
-		TFunction<void(const TArray<FVector>&)> Callback = [this](const TArray<FVector>& OutVectors) {
-			this->Completed.Broadcast(OutVectors);
+		TFunction<void(const TArray<FVector>&, const TArray<FVector>&)> Callback = 
+			[this](const TArray<FVector>& OutPredictedPositions, const TArray<FVector>& OutVelocities) {
+			AsyncTask(ENamedThreads::GameThread, [this, OutPredictedPositions, OutVelocities]() {
+				this->Completed.Broadcast(OutPredictedPositions, OutVelocities);
+				});
+			//this->Completed.Broadcast(OutVectors,OutVelocities);
 			};
 
 		FExternalForceKernelInterface::Dispatch(Params, Callback);
