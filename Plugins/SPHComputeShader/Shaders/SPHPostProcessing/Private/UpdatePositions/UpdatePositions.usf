@@ -4,11 +4,71 @@ RWStructuredBuffer<double3> Positions;
 RWStructuredBuffer<double3> Velocities;
 
 int NumParticles;
+float boundingSize;
+float collisionDamping;
+
+
+void ResolveCollisions(uint particleIndex)
+{
+    double3 pos = Positions[particleIndex];
+    double3 vel = Velocities[particleIndex];
+    double coll = double(collisionDamping);
+    
+    const double3 boxMin = double3(-boundingSize, -boundingSize, -boundingSize); // 박스의 최소 좌표
+    const double3 boxMax = double3(boundingSize, boundingSize, boundingSize); // 박스의 최대 좌표
+    
+    // X축 충돌 체크
+    if (pos.x < boxMin.x)
+    {
+        pos.x = boxMin.x;
+        vel.x = -vel.x * coll;
+    }
+    else if (pos.x > boxMax.x)
+    {
+        pos.x = boxMax.x;
+        vel.x = -vel.x * coll;
+    }
+    
+    // Y축 충돌 체크
+    if (pos.y < boxMin.y)
+    {
+        pos.y = boxMin.y;
+        vel.y = -vel.y * coll;
+    }
+    else if (pos.y > boxMax.y)
+    {
+        pos.y = boxMax.y;
+        vel.y = -vel.y * coll;
+    }
+    
+    // Z축 충돌 체크
+    if (pos.z < boxMin.z)
+    {
+        pos.z = boxMin.z;
+        vel.z = -vel.z * coll;
+    }
+    else if (pos.z > boxMax.z)
+    {
+        pos.z = boxMax.z;
+        vel.z = -vel.z * coll;
+    }
+    
+    Positions[particleIndex] = pos;
+    Velocities[particleIndex] = vel;
+}
+
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void UpdatePositions(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-	// Outputs one number
+    int id = DispatchThreadId.x;
+    double deltaTime = 1.0 / 120.0;
+    
+    if (id >= NumParticles)
+        return;
+
+    Positions[id] += Velocities[id] * deltaTime;
+    ResolveCollisions(id);
 }

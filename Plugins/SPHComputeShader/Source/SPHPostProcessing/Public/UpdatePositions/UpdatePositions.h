@@ -18,6 +18,8 @@ struct SPHPOSTPROCESSING_API FUpdatePositionsDispatchParams
 	TArray<FVector> Positions; //InputAndOutput
 	TArray<FVector> Velocities; //InputAndOutput
 	int NumParticles;
+	float boundingSize;
+	float collisionDamping;
 
 	FUpdatePositionsDispatchParams(int x, int y, int z)
 		: X(x)
@@ -84,6 +86,9 @@ public:
 		FUpdatePositionsDispatchParams Params(NumParticles, 1, 1);
 		Params.Positions = Positions;
 		Params.Velocities = Velocities;
+		Params.boundingSize = boundingSize;
+		Params.collisionDamping = collisionDamping;
+		Params.NumParticles = NumParticles;
 
 		TFunction<void(const TArray<FVector>&, const TArray<FVector>&)> Callback =
 			[this](const TArray<FVector>& OutPositions, const TArray<FVector>& OutVelocities) {
@@ -99,10 +104,13 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UUpdatePositionsLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector>& Positions, const TArray<FVector>& Velocities, int NumParticles) {
+	static UUpdatePositionsLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector>& Positions, const TArray<FVector>& Velocities, int NumParticles, float boundingSize, float collisionDamping) {
 		UUpdatePositionsLibrary_AsyncExecution* Action = NewObject<UUpdatePositionsLibrary_AsyncExecution>();
 		Action->Positions = Positions;
 		Action->Velocities = Velocities;
+		Action->boundingSize = boundingSize;
+		Action->collisionDamping = collisionDamping;
+		Action->NumParticles = NumParticles;
 		Action->RegisterWithGameInstance(WorldContextObject);
 
 		return Action;
@@ -114,4 +122,6 @@ public:
 	TArray<FVector> Positions;
 	TArray<FVector> Velocities;
 	int NumParticles;
+	float boundingSize;
+	float collisionDamping;
 };

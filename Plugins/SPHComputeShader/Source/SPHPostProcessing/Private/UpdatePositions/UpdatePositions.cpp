@@ -54,6 +54,8 @@ public:
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 
 		SHADER_PARAMETER(int, NumParticles)
+		SHADER_PARAMETER(float, boundingSize)
+		SHADER_PARAMETER(float, collisionDamping)
 
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, Positions)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, Velocities)
@@ -152,6 +154,8 @@ void FUpdatePositionsInterface::DispatchRenderThread(FRHICommandListImmediate& R
 			PassParameters->Velocities = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(VelocitiesBuffer));
 
 			PassParameters->NumParticles = Params.NumParticles;
+			PassParameters->boundingSize = Params.boundingSize;
+			PassParameters->collisionDamping = Params.collisionDamping;
 			
 
 			auto GroupCount = FComputeShaderUtils::GetGroupCount(
