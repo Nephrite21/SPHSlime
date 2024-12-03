@@ -56,7 +56,7 @@ public:
 		SHADER_PARAMETER(int, NumParticles)
 		SHADER_PARAMETER(float, gravity)
 		
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, Positions)
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, Positions)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, Velocities)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, PredictedPositions)
 		
@@ -128,6 +128,13 @@ void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediat
 			const void* RawData = Params.Positions.GetData();
 			int NumVectors = Params.Positions.Num();
 			int VectorSize = sizeof(FVector);
+
+			if (NumVectors > 0) {
+				const FVector* Positions = (const FVector*)RawData;
+				UE_LOG(LogTemp, Warning, TEXT("First Position before buffer creation: X=%f, Y=%f, Z=%f"),
+					Positions[0].X, Positions[0].Y, Positions[0].Z);
+			}
+
 			FRDGBufferRef PositionsBuffer = CreateStructuredBuffer(
 				GraphBuilder,
 				TEXT("PositionsVectorBuffer"),
@@ -136,7 +143,7 @@ void FExternalForceKernelInterface::DispatchRenderThread(FRHICommandListImmediat
 				RawData,
 				VectorSize * NumVectors
 			);
-			PassParameters->Positions = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(PositionsBuffer));
+			PassParameters->Positions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PositionsBuffer));
 
 
 			//Velocities 버퍼 설정
