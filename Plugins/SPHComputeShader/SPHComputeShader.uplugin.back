@@ -24,6 +24,11 @@
 			"Name": "SPHPreprocessing",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "SPHPostProcessing",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
 		}
 	]
 }

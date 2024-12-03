@@ -1,0 +1,16 @@
+#include "/Engine/Public/Platform.ush"
+
+int NumParticles;
+float SmoothingRadius;
+
+StructuredBuffer<double3> PredictedPositions;
+RWStructuredBuffer<int> SpatialOffsets;
+RWStructuredBuffer<double3> SpatialIndices;
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void SpatialHashKernel(
+	uint3 DispatchThreadId : SV_DispatchThreadID,
+	uint GroupIndex : SV_GroupIndex )
+{
+	// Outputs one number
+}
