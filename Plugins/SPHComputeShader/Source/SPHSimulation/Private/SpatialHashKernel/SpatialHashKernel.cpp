@@ -58,7 +58,7 @@ public:
 
 		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, PredictedPositions)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<int>, SpatialOffsets)
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, SpatialIndices)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FIntVector>, SpatialIndices)
 		
 
 	END_SHADER_PARAMETER_STRUCT()
@@ -103,7 +103,7 @@ private:
 IMPLEMENT_GLOBAL_SHADER(FSpatialHashKernel, "/SPHSimulationShaders/SpatialHashKernel/SpatialHashKernel.usf", "SpatialHashKernel", SF_Compute);
 
 void FSpatialHashKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FSpatialHashKernelDispatchParams Params, 
-	TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FVector>& SpatialIndices)> AsyncCallback) {
+	TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FIntVector>& SpatialIndices)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -153,7 +153,7 @@ void FSpatialHashKernelInterface::DispatchRenderThread(FRHICommandListImmediate&
 
 
 			FRDGBufferRef SpatialIndices = GraphBuilder.CreateBuffer(
-				FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector), NumVectors),
+				FRDGBufferDesc::CreateStructuredDesc(sizeof(FIntVector), NumVectors),
 				TEXT("SpatialIndices"));
 
 			PassParameters->SpatialIndices = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(SpatialIndices));
@@ -193,10 +193,10 @@ void FSpatialHashKernelInterface::DispatchRenderThread(FRHICommandListImmediate&
 					SpatialOffsetsReadback->Unlock();
 
 
-					FVector* SpatialIndicesBuffer = (FVector*)SpatialIndicesReadback->Lock(NumVectors * sizeof(FVector));
-					TArray<FVector> SpatialIndices;
+					FIntVector* SpatialIndicesBuffer = (FIntVector*)SpatialIndicesReadback->Lock(NumVectors * sizeof(FIntVector));
+					TArray<FIntVector> SpatialIndices;
 					SpatialIndices.SetNum(NumVectors);
-					FMemory::Memcpy(SpatialIndices.GetData(), SpatialIndicesBuffer, NumVectors * sizeof(FVector));
+					FMemory::Memcpy(SpatialIndices.GetData(), SpatialIndicesBuffer, NumVectors * sizeof(FIntVector));
 					SpatialIndicesReadback->Unlock();
 
 					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, SpatialOffsets, SpatialIndices]() {

@@ -16,7 +16,7 @@ struct SPHSIMULATION_API FSpatialHashKernelDispatchParams
 
 	TArray<FVector> PredictedPositions; //Input
 	TArray<int> SpatialOffsets; //InputAndOutput
-	TArray<FVector> SpatialIndices; //Output
+	TArray<FIntVector> SpatialIndices; //Output
 
 	int NumParticles;
 	float SmoothingRadius;
@@ -39,13 +39,13 @@ public:
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
 		FSpatialHashKernelDispatchParams Params,
-		TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FVector>& SpatialIndices)> AsyncCallback
+		TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FIntVector>& SpatialIndices)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
 		FSpatialHashKernelDispatchParams Params,
-		TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FVector>& SpatialIndices)> AsyncCallback
+		TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FIntVector>& SpatialIndices)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
@@ -58,7 +58,7 @@ public:
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
 		FSpatialHashKernelDispatchParams Params,
-		TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FVector>& SpatialIndices)> AsyncCallback
+		TFunction<void(const TArray<int>& SpatialOffsets, const TArray<FIntVector>& SpatialIndices)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
@@ -73,7 +73,7 @@ public:
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSpatialHashKernelLibrary_AsyncExecutionCompleted,
 	const TArray<int>&, SpatialOffests,
-	const TArray<FVector>&, SpatialIndices
+	const TArray<FIntVector>&, SpatialIndices
 	);
 
 
@@ -93,8 +93,8 @@ public:
 		Params.PredictedPositions = PredictedPositions;
 		Params.SpatialOffsets = SpatialOffsets;
 
-		TFunction<void(const TArray<int>&, const TArray<FVector>&)> Callback =
-			[this](const TArray<int>& SpatialOffsets, const TArray<FVector>& SpatialIndices) {
+		TFunction<void(const TArray<int>&, const TArray<FIntVector>&)> Callback =
+			[this](const TArray<int>& SpatialOffsets, const TArray<FIntVector>& SpatialIndices) {
 			AsyncTask(ENamedThreads::GameThread, [this, SpatialOffsets, SpatialIndices]() {
 				this->Completed.Broadcast(SpatialOffsets, SpatialIndices);
 				});
