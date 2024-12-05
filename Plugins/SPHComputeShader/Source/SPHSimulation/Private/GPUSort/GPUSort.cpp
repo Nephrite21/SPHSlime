@@ -251,7 +251,6 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 						});
 				}
 			}
-
 			FCalculateOffsetsKernel::FParameters* CalcOffsetPassParameters = GraphBuilder.AllocParameters<FCalculateOffsetsKernel::FParameters>();
 
 			FRDGBufferRef OffsetsBuffer = GraphBuilder.CreateBuffer(
@@ -270,7 +269,6 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 				{
 					FComputeShaderUtils::Dispatch(RHICmdList, CalcOffsetComputeShader, *CalcOffsetPassParameters, GroupCount);
 				});
-
 			FRHIGPUBufferReadback* EntriesReadback = new FRHIGPUBufferReadback(TEXT("SortedEntriesOutput"));
 			FRHIGPUBufferReadback* CalcedOffsetsReadback = new FRHIGPUBufferReadback(TEXT("SortedEntriesOutput"));
 			AddEnqueueCopyPass(GraphBuilder, EntriesReadback, EntriesBuffer, 0u);
@@ -279,10 +277,10 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 			auto RunnerFunc = [EntriesReadback, CalcedOffsetsReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
 				if (EntriesReadback->IsReady() && CalcedOffsetsReadback->IsReady()) {
 
-					FIntVector* EntriesBuffer = (FIntVector*)EntriesReadback->Lock(NumVectors * sizeof(FIntVector));
+					FIntVector* EntBuffer = (FIntVector*)EntriesReadback->Lock(NumVectors * sizeof(FIntVector));
 					TArray<FIntVector> Entries;
 					Entries.SetNum(NumVectors);
-					FMemory::Memcpy(EntriesBuffer.GetData(), EntriesBuffer, NumVectors * sizeof(FIntVector));
+					FMemory::Memcpy(Entries.GetData(), EntBuffer, NumVectors * sizeof(FIntVector));
 					EntriesReadback->Unlock();
 
 
@@ -305,7 +303,7 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 						RunnerFunc(RunnerFunc);
 						});
 				}
-				};
+			};
 
 
 			
@@ -357,10 +355,10 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 					});
 				}
 			};
-
+			*/
 			AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]() {
 				RunnerFunc(RunnerFunc);
-			});*/
+			});
 			
 		} else {
 			#if WITH_EDITOR
