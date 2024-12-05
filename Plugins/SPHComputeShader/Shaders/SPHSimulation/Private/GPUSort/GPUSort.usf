@@ -1,13 +1,44 @@
 #include "/Engine/Public/Platform.ush"
 
-Buffer<int> Input;
-RWBuffer<int> Output;
+// 구조체 정의
+//struct FEntry
+//{
+//    uint OriginalIndex;
+//    uint Hash;
+//    uint Key;
+//};
 
-[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
-void GPUSort(
-	uint3 DispatchThreadId : SV_DispatchThreadID,
-	uint GroupIndex : SV_GroupIndex )
+// 버퍼 선언
+RWStructuredBuffer<int3> Entries;
+int NumEntries;
+int GroupWidth;
+int GroupHeight;
+int StepIndex;
+
+[numthreads(128, 1, 1)]
+void SortCS(uint3 DTid : SV_DispatchThreadID)
 {
-	// Outputs one number
-	Output[0] = Input[0] * Input[1];
+    uint i = DTid.x;
+    uint hIndex = i & (GroupWidth - 1);
+    uint indexLeft = hIndex + (GroupHeight + 1) * (i / GroupWidth);
+    uint rightStepSize = StepIndex == 0 ? GroupHeight - 2 * hIndex : (GroupHeight + 1) / 2;
+    uint indexRight = indexLeft + rightStepSize;
+
+    if (indexRight >= NumEntries) 
+        return;
+
+    // 정렬 로직
+    if (Entries[indexLeft][2] > Entries[indexRight][2]) //[2] = key
+    {
+        int3 temp = Entries[indexLeft];
+        Entries[indexLeft] = Entries[indexRight];
+        Entries[indexRight] = temp;
+    }
+}
+
+[numthreads(128, 1, 1)]
+void CalculateOffsetsCS(uint3 DTid : SV_DispatchThreadID)
+{
+    // Offset 계산 로직
+    // ...
 }

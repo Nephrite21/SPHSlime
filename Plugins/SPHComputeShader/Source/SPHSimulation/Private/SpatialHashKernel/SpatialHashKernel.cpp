@@ -184,12 +184,10 @@ void FSpatialHashKernelInterface::DispatchRenderThread(FRHICommandListImmediate&
 			auto RunnerFunc = [SpatialOffsetsReadback, SpatialIndicesReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
 				if (SpatialOffsetsReadback->IsReady() && SpatialIndicesReadback->IsReady()) {
 					
-					FVector* Buffer = (FVector*)SpatialOffsetsReadback->Lock(NumVectors * sizeof(int));
-
+					int* Buffer = (int*)SpatialOffsetsReadback->Lock(NumVectors * sizeof(int));
 					TArray<int> SpatialOffsets;
 					SpatialOffsets.SetNum(NumVectors);
 					FMemory::Memcpy(SpatialOffsets.GetData(), Buffer, NumVectors * sizeof(int));
-
 					SpatialOffsetsReadback->Unlock();
 
 
@@ -198,6 +196,7 @@ void FSpatialHashKernelInterface::DispatchRenderThread(FRHICommandListImmediate&
 					SpatialIndices.SetNum(NumVectors);
 					FMemory::Memcpy(SpatialIndices.GetData(), SpatialIndicesBuffer, NumVectors * sizeof(FIntVector));
 					SpatialIndicesReadback->Unlock();
+
 
 					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, SpatialOffsets, SpatialIndices]() {
 						AsyncCallback(SpatialOffsets, SpatialIndices);

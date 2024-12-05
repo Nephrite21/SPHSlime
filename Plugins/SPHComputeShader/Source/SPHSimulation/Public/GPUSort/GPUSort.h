@@ -15,8 +15,10 @@ struct SPHSIMULATION_API FGPUSortDispatchParams
 	int Z;
 
 	
-	int Input[2];
-	int Output;
+	int NumParticles;
+	TArray<FIntVector> Entries; //input And Output //Output 굳이 해야하는지?
+	TArray<int> Offsets; //Output
+
 	
 	
 
@@ -35,13 +37,13 @@ public:
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
 		FGPUSortDispatchParams Params,
-		TFunction<void(int OutputVal)> AsyncCallback
+		TFunction<void(const TArray<FIntVector>& Entries, const TArray<int>& Offsets)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
 		FGPUSortDispatchParams Params,
-		TFunction<void(int OutputVal)> AsyncCallback
+		TFunction<void(const TArray<FIntVector>& Entries, const TArray<int>& Offsets)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
@@ -54,7 +56,7 @@ public:
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
 		FGPUSortDispatchParams Params,
-		TFunction<void(int OutputVal)> AsyncCallback
+		TFunction<void(const TArray<FIntVector>& Entries,const TArray<int>& Offsets)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
@@ -67,7 +69,10 @@ public:
 
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGPUSortLibrary_AsyncExecutionCompleted, const int, Value);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGPUSortLibrary_AsyncExecutionCompleted,
+	const TArray<FIntVector>&, Entries,
+	const TArray<int>&, Offsets
+);
 
 
 UCLASS() // Change the _API to match your project
@@ -80,23 +85,29 @@ public:
 	// Execute the actual load
 	virtual void Activate() override {
 		// Create a dispatch parameters struct and fill it the input array with our args
-		FGPUSortDispatchParams Params(1, 1, 1);
-		Params.Input[0] = Arg1;
-		Params.Input[1] = Arg2;
+		FGPUSortDispatchParams Params(NumParticles, 1, 1);
 
-		// Dispatch the compute shader and wait until it completes
-		FGPUSortInterface::Dispatch(Params, [this](int OutputVal) {
-			this->Completed.Broadcast(OutputVal);
-		});
+		Params.Entries = Entries;
+		Params.NumParticles = NumParticles;
+
+		TFunction<void(const TArray<FIntVector>& ,const TArray<int>&)> Callback =
+			[this](const TArray<FIntVector>& Entries ,const TArray<int>& Offsets) {
+			AsyncTask(ENamedThreads::GameThread, [this, Entries, Offsets]() {
+				this->Completed.Broadcast(Entries, Offsets);
+				});
+			//this->Completed.Broadcast(OutVectors,OutVelocities);
+			};
+
+		FGPUSortInterface::Dispatch(Params, Callback);
 	}
 	
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UGPUSortLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, int Arg1, int Arg2) {
+	static UGPUSortLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FIntVector>& Entries, int NumParticles) {
 		UGPUSortLibrary_AsyncExecution* Action = NewObject<UGPUSortLibrary_AsyncExecution>();
-		Action->Arg1 = Arg1;
-		Action->Arg2 = Arg2;
+		Action->Entries = Entries;
+		Action->NumParticles = NumParticles;
 		Action->RegisterWithGameInstance(WorldContextObject);
 
 		return Action;
@@ -105,8 +116,8 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnGPUSortLibrary_AsyncExecutionCompleted Completed;
 
+	TArray<FIntVector> Entries;
 	
-	int Arg1;
-	int Arg2;
+	int NumParticles;
 	
 };
