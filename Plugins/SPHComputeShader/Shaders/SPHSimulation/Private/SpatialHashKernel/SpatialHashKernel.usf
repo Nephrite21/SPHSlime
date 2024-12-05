@@ -46,7 +46,12 @@ static const uint hashK3 = 440817757;
 
 int3 GetCell3D(double3 position, double radius)
 {
-    return (int3) floor(position / radius);
+    float r = float(radius);
+    return int3(
+        floor(float(position.x) / r),
+        floor(float(position.y) / r),
+        floor(float(position.z) / r)
+    );
 }
 
 // Hash cell coordinate to a single unsigned integer

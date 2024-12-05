@@ -53,10 +53,10 @@ public:
 
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 
-		SHADER_PARAMETER(int, StepIndex);
-		SHADER_PARAMETER(int, GroupWidth);
-		SHADER_PARAMETER(int, GroupHeight);
-		SHADER_PARAMETER(int, NumEntries);
+		SHADER_PARAMETER(int, StepIndex)
+		SHADER_PARAMETER(int, GroupWidth)
+		SHADER_PARAMETER(int, GroupHeight)
+		SHADER_PARAMETER(int, NumEntries)
 
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FIntVector>, Entries)//Input and Output
 
@@ -97,7 +97,7 @@ public:
 private:
 };
 
-IMPLEMENT_GLOBAL_SHADER(FSortKernel, "/SPHSimulationShaders/SpatialHashKernel/SpatialHashKernel.usf", "SortCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSortKernel, "/SPHSimulationShaders/GPUSort/GPUSort.usf", "SortCS", SF_Compute);
 
 class SPHSIMULATION_API FCalculateOffsetsKernel : public FGlobalShader
 {
@@ -181,7 +181,7 @@ private:
 
 // This will tell the engine to create the shader and where the shader entry point is.
 //                            ShaderType                            ShaderPath                     Shader function name    Type
-IMPLEMENT_GLOBAL_SHADER(FCalculateOffsetsKernel, "/SPHSimulationShaders/SpatialHashKernel/SpatialHashKernel.usf", "CalculateOffsetsCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FCalculateOffsetsKernel, "/SPHSimulationShaders/GPUSort/GPUSort.usf", "CalculateOffsetsCS", SF_Compute);
 
 void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FGPUSortDispatchParams Params, 
 	TFunction<void(const TArray<FIntVector>& Entries,const TArray<int>& Offsets)> AsyncCallback) {
