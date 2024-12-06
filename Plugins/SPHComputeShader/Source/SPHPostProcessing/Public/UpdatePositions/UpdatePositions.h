@@ -15,8 +15,8 @@ struct SPHPOSTPROCESSING_API FUpdatePositionsDispatchParams
 	int Z;
 
 	
-	TArray<FVector> Positions; //InputAndOutput
-	TArray<FVector> Velocities; //InputAndOutput
+	TArray<FVector3f> Positions; //InputAndOutput
+	TArray<FVector3f> Velocities; //InputAndOutput
 	int NumParticles;
 	float boundingSize;
 	float collisionDamping;
@@ -36,13 +36,13 @@ public:
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
 		FUpdatePositionsDispatchParams Params,
-		TFunction<void(const TArray<FVector>& Positions, const TArray<FVector>& Velocities)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& Positions, const TArray<FVector3f>& Velocities)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
 		FUpdatePositionsDispatchParams Params,
-		TFunction<void(const TArray<FVector>& Positions, const TArray<FVector>& Velocities)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& Positions, const TArray<FVector3f>& Velocities)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
@@ -55,7 +55,7 @@ public:
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
 		FUpdatePositionsDispatchParams Params,
-		TFunction<void(const TArray<FVector>& Positions, const TArray<FVector>& Velocities)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& Positions, const TArray<FVector3f>& Velocities)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
@@ -69,8 +69,8 @@ public:
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnUpdatePositionsLibrary_AsyncExecutionCompleted,
-	const TArray<FVector>&, Positions,
-	const TArray<FVector>&, Velocities);
+	const TArray<FVector3f>&, Positions,
+	const TArray<FVector3f>&, Velocities);
 
 
 UCLASS() // Change the _API to match your project
@@ -90,8 +90,8 @@ public:
 		Params.collisionDamping = collisionDamping;
 		Params.NumParticles = NumParticles;
 
-		TFunction<void(const TArray<FVector>&, const TArray<FVector>&)> Callback =
-			[this](const TArray<FVector>& OutPositions, const TArray<FVector>& OutVelocities) {
+		TFunction<void(const TArray<FVector3f>&, const TArray<FVector3f>&)> Callback =
+			[this](const TArray<FVector3f>& OutPositions, const TArray<FVector3f>& OutVelocities) {
 			AsyncTask(ENamedThreads::GameThread, [this, OutPositions, OutVelocities]() {
 				this->Completed.Broadcast(OutPositions, OutVelocities);
 				});
@@ -104,7 +104,7 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UUpdatePositionsLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector>& Positions, const TArray<FVector>& Velocities, int NumParticles, float boundingSize, float collisionDamping) {
+	static UUpdatePositionsLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector3f>& Positions, const TArray<FVector3f>& Velocities, int NumParticles, float boundingSize, float collisionDamping) {
 		UUpdatePositionsLibrary_AsyncExecution* Action = NewObject<UUpdatePositionsLibrary_AsyncExecution>();
 		Action->Positions = Positions;
 		Action->Velocities = Velocities;
@@ -119,8 +119,8 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnUpdatePositionsLibrary_AsyncExecutionCompleted Completed;
 
-	TArray<FVector> Positions;
-	TArray<FVector> Velocities;
+	TArray<FVector3f> Positions;
+	TArray<FVector3f> Velocities;
 	int NumParticles;
 	float boundingSize;
 	float collisionDamping;

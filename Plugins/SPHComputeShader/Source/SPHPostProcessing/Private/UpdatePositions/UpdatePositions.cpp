@@ -57,8 +57,8 @@ public:
 		SHADER_PARAMETER(float, boundingSize)
 		SHADER_PARAMETER(float, collisionDamping)
 
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, Positions)
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector>, Velocities)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector3f>, Positions)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector3f>, Velocities)
 		
 
 	END_SHADER_PARAMETER_STRUCT()
@@ -103,7 +103,7 @@ private:
 IMPLEMENT_GLOBAL_SHADER(FUpdatePositions, "/SPHPostProcessingShaders/UpdatePositions/UpdatePositions.usf", "UpdatePositions", SF_Compute);
 
 void FUpdatePositionsInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FUpdatePositionsDispatchParams Params,
-	TFunction<void(const TArray<FVector>& Positions, const TArray<FVector>& Velocities)> AsyncCallback) {
+	TFunction<void(const TArray<FVector3f>& Positions, const TArray<FVector3f>& Velocities)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -129,11 +129,11 @@ void FUpdatePositionsInterface::DispatchRenderThread(FRHICommandListImmediate& R
 			//Positions 버퍼 설정
 			const void* RawData = Params.Positions.GetData();
 			int NumVectors = Params.Positions.Num();
-			int VectorSize = sizeof(FVector);
+			int VectorSize = sizeof(FVector3f);
 			FRDGBufferRef PositionsBuffer = CreateStructuredBuffer(
 				GraphBuilder,
 				TEXT("PositionsVectorBuffer"),
-				sizeof(FVector),
+				sizeof(FVector3f),
 				NumVectors,
 				RawData,
 				VectorSize * NumVectors
@@ -146,7 +146,7 @@ void FUpdatePositionsInterface::DispatchRenderThread(FRHICommandListImmediate& R
 			FRDGBufferRef VelocitiesBuffer = CreateStructuredBuffer(
 				GraphBuilder,
 				TEXT("VelocitiesVectorBuffer"),
-				sizeof(FVector),
+				sizeof(FVector3f),
 				NumVectors,
 				RawData1,
 				VectorSize * NumVectors
@@ -183,19 +183,19 @@ void FUpdatePositionsInterface::DispatchRenderThread(FRHICommandListImmediate& R
 			auto RunnerFunc = [PositionsReadback, VelocitiesReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
 				if (PositionsReadback->IsReady() && VelocitiesReadback->IsReady()) {
 					
-					FVector* Buffer = (FVector*)PositionsReadback->Lock(NumVectors * sizeof(FVector));
+					FVector3f* Buffer = (FVector3f*)PositionsReadback->Lock(NumVectors * sizeof(FVector3f));
 
-					TArray<FVector> Positions;
+					TArray<FVector3f> Positions;
 					Positions.SetNum(NumVectors);
-					FMemory::Memcpy(Positions.GetData(), Buffer, NumVectors * sizeof(FVector));
+					FMemory::Memcpy(Positions.GetData(), Buffer, NumVectors * sizeof(FVector3f));
 					
 					PositionsReadback->Unlock();
 
 
-					FVector* VelocitiesBuffer = (FVector*)VelocitiesReadback->Lock(NumVectors * sizeof(FVector));
-					TArray<FVector> Velocities;
+					FVector3f* VelocitiesBuffer = (FVector3f*)VelocitiesReadback->Lock(NumVectors * sizeof(FVector3f));
+					TArray<FVector3f> Velocities;
 					Velocities.SetNum(NumVectors);
-					FMemory::Memcpy(Velocities.GetData(), VelocitiesBuffer, NumVectors * sizeof(FVector));
+					FMemory::Memcpy(Velocities.GetData(), VelocitiesBuffer, NumVectors * sizeof(FVector3f));
 					VelocitiesReadback->Unlock();
 
 

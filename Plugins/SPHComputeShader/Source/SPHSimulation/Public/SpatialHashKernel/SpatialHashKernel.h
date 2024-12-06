@@ -14,7 +14,7 @@ struct SPHSIMULATION_API FSpatialHashKernelDispatchParams
 	int Y;
 	int Z;
 
-	TArray<FVector> PredictedPositions; //Input
+	TArray<FVector3f> PredictedPositions; //Input
 	TArray<int> SpatialOffsets; //InputAndOutput
 	TArray<FIntVector> SpatialIndices; //Output
 
@@ -107,7 +107,7 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static USpatialHashKernelLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector>& PredictedPositions, const TArray<int>& SpatialOffsets, int NumParticles, float SmoothingRadius) {
+	static USpatialHashKernelLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector3f>& PredictedPositions, const TArray<int>& SpatialOffsets, int NumParticles, float SmoothingRadius) {
 		USpatialHashKernelLibrary_AsyncExecution* Action = NewObject<USpatialHashKernelLibrary_AsyncExecution>();
 		Action->PredictedPositions = PredictedPositions;
 		Action->SpatialOffsets = SpatialOffsets;
@@ -121,7 +121,7 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnSpatialHashKernelLibrary_AsyncExecutionCompleted Completed;
 
-	TArray<FVector> PredictedPositions;
+	TArray<FVector3f> PredictedPositions;
 	TArray<int> SpatialOffsets;
 
 	int NumParticles;

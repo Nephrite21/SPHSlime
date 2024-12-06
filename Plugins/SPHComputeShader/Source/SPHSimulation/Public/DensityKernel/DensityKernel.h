@@ -14,9 +14,14 @@ struct SPHSIMULATION_API FDensityKernelDispatchParams
 	int Y;
 	int Z;
 
-	
-	int Input[2];
-	int Output;
+	int NumParticles;
+	float SmoothingRadius;
+
+	TArray<FVector3f> PredictedPositions; //Input
+	TArray<FIntVector> SpatialIndices; //Input
+	TArray<int> SpatialOffsets; //Input
+
+	TArray<FVector2f> Densities; //Output
 	
 	
 
@@ -35,13 +40,13 @@ public:
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
 		FDensityKernelDispatchParams Params,
-		TFunction<void(int OutputVal)> AsyncCallback
+		TFunction<void(const TArray<FVector2f>& Densities)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
 		FDensityKernelDispatchParams Params,
-		TFunction<void(int OutputVal)> AsyncCallback
+		TFunction<void(const TArray<FVector2f>& Densities)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
@@ -54,7 +59,7 @@ public:
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
 		FDensityKernelDispatchParams Params,
-		TFunction<void(int OutputVal)> AsyncCallback
+		TFunction<void(const TArray<FVector2f>& Densities)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
@@ -67,7 +72,8 @@ public:
 
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDensityKernelLibrary_AsyncExecutionCompleted, const int, Value);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDensityKernelLibrary_AsyncExecutionCompleted, 
+	const TArray<FVector2f>&, Densities);
 
 
 UCLASS() // Change the _API to match your project
@@ -80,23 +86,41 @@ public:
 	// Execute the actual load
 	virtual void Activate() override {
 		// Create a dispatch parameters struct and fill it the input array with our args
-		FDensityKernelDispatchParams Params(1, 1, 1);
-		Params.Input[0] = Arg1;
-		Params.Input[1] = Arg2;
+		FDensityKernelDispatchParams Params(NumParticles, 1, 1);
+		Params.PredictedPositions = PredictedPositions;
+		Params.SpatialIndices = SpatialIndices;
+		Params.SpatialOffsets = SpatialOffsets;
+		Params.NumParticles = NumParticles;
+		Params.SmoothingRadius = SmoothingRadius;
 
-		// Dispatch the compute shader and wait until it completes
-		FDensityKernelInterface::Dispatch(Params, [this](int OutputVal) {
-			this->Completed.Broadcast(OutputVal);
-		});
+		TFunction<void(const TArray<FVector2f>&)> Callback =
+			[this](const TArray<FVector2f>& Densities) {
+			AsyncTask(ENamedThreads::GameThread, [this, Densities]() {
+				this->Completed.Broadcast(Densities);
+				});
+			//this->Completed.Broadcast(OutVectors,OutVelocities);
+			};
+
+		FDensityKernelInterface::Dispatch(Params, Callback);
 	}
 	
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UDensityKernelLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, int Arg1, int Arg2) {
+	static UDensityKernelLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject,
+		const TArray<FVector3f>& PredictedPositions,
+		const TArray<FIntVector>& SpatialIndices,
+		const TArray<int>& SpatialOffsets,
+		int NumParticles,
+		float SmoothingRadius
+	) {
 		UDensityKernelLibrary_AsyncExecution* Action = NewObject<UDensityKernelLibrary_AsyncExecution>();
-		Action->Arg1 = Arg1;
-		Action->Arg2 = Arg2;
+		Action->PredictedPositions = PredictedPositions;
+		Action->SpatialIndices = SpatialIndices;
+		Action->SpatialOffsets = SpatialOffsets;
+		Action->NumParticles = NumParticles;
+		Action->SmoothingRadius = SmoothingRadius;
+
 		Action->RegisterWithGameInstance(WorldContextObject);
 
 		return Action;
@@ -106,7 +130,10 @@ public:
 	FOnDensityKernelLibrary_AsyncExecutionCompleted Completed;
 
 	
-	int Arg1;
-	int Arg2;
+	TArray<FVector3f> PredictedPositions;
+	TArray<FIntVector> SpatialIndices;
+	TArray<int> SpatialOffsets;
+	int NumParticles;
+	float SmoothingRadius;
 	
 };

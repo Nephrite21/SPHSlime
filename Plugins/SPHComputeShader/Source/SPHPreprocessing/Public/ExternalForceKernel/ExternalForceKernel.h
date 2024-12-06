@@ -15,12 +15,12 @@ struct SPHPREPROCESSING_API FExternalForceKernelDispatchParams
 	int Z;
 
 	
-	TArray<FVector> Positions; //Input
-	TArray<FVector> Velocities; //Input
+	TArray<FVector3f> Positions; //Input
+	TArray<FVector3f> Velocities; //Input
 	int NumParticles;
 	float gravity;
 
-	TArray<FVector> PredictedPositions;
+	TArray<FVector3f> PredictedPositions;
 
 	
 	
@@ -40,13 +40,13 @@ public:
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
 		FExternalForceKernelDispatchParams Params,
-		TFunction<void(const TArray<FVector>& PredictedPositions, const TArray<FVector>& Velocities)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& PredictedPositions, const TArray<FVector3f>& Velocities)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
 		FExternalForceKernelDispatchParams Params,
-		TFunction<void(const TArray<FVector>& PredictedPositions, const TArray<FVector>& Velocities)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& PredictedPositions, const TArray<FVector3f>& Velocities)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
@@ -59,7 +59,7 @@ public:
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
 		FExternalForceKernelDispatchParams Params,
-		TFunction<void(const TArray<FVector>& PredictedPositions, const TArray<FVector>& Velocities)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& PredictedPositions, const TArray<FVector3f>& Velocities)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
@@ -73,8 +73,8 @@ public:
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnExternalForceKernelLibrary_AsyncExecutionCompleted,
-	const TArray<FVector>&, PredictedPositions,
-	const TArray<FVector>&, Velocities);
+	const TArray<FVector3f>&, PredictedPositions,
+	const TArray<FVector3f>&, Velocities);
 
 
 UCLASS() // Change the _API to match your project
@@ -94,8 +94,8 @@ public:
 		Params.NumParticles = NumParticles;
 
 
-		TFunction<void(const TArray<FVector>&, const TArray<FVector>&)> Callback = 
-			[this](const TArray<FVector>& OutPredictedPositions, const TArray<FVector>& OutVelocities) {
+		TFunction<void(const TArray<FVector3f>&, const TArray<FVector3f>&)> Callback = 
+			[this](const TArray<FVector3f>& OutPredictedPositions, const TArray<FVector3f>& OutVelocities) {
 			AsyncTask(ENamedThreads::GameThread, [this, OutPredictedPositions, OutVelocities]() {
 				this->Completed.Broadcast(OutPredictedPositions, OutVelocities);
 				});
@@ -108,7 +108,11 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UExternalForceKernelLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector>& Positions, const TArray<FVector>& Velocities, int NumParticles, float gravity) {
+	static UExternalForceKernelLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, 
+		const TArray<FVector3f>& Positions, 
+		const TArray<FVector3f>& Velocities, 
+		int NumParticles, float gravity
+	) {
 		UExternalForceKernelLibrary_AsyncExecution* Action = NewObject<UExternalForceKernelLibrary_AsyncExecution>();
 		Action->Positions = Positions;
 		Action->Velocities = Velocities;
@@ -123,8 +127,8 @@ public:
 	FOnExternalForceKernelLibrary_AsyncExecutionCompleted Completed;
 
 	
-	TArray<FVector> Positions;
-	TArray<FVector> Velocities;
+	TArray<FVector3f> Positions;
+	TArray<FVector3f> Velocities;
 	int NumParticles;
 	float gravity;
 };

@@ -54,8 +54,13 @@ public:
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 
 		
-		SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<int>, Input)
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<int>, Output)
+		SHADER_PARAMETER(int, NumParticles)
+		SHADER_PARAMETER(float, SmoothingRadius)
+
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector3f>, PredictedPositions)
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FIntVector>, SpatialIndices)
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<int>, SpatialOffsets)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector2f>, Densities)
 		
 
 	END_SHADER_PARAMETER_STRUCT()
@@ -99,7 +104,8 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FDensityKernel, "/SPHSimulationShaders/DensityKernel/DensityKernel.usf", "DensityKernel", SF_Compute);
 
-void FDensityKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FDensityKernelDispatchParams Params, TFunction<void(int OutputVal)> AsyncCallback) {
+void FDensityKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FDensityKernelDispatchParams Params, 
+	TFunction<void(const TArray<FVector2f>&)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -121,19 +127,54 @@ void FDensityKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHI
 		if (bIsShaderValid) {
 			FDensityKernel::FParameters* PassParameters = GraphBuilder.AllocParameters<FDensityKernel::FParameters>();
 
-			
-			const void* RawData = (void*)Params.Input;
-			int NumInputs = 2;
-			int InputSize = sizeof(int);
-			FRDGBufferRef InputBuffer = CreateUploadBuffer(GraphBuilder, TEXT("InputBuffer"), InputSize, NumInputs, RawData, InputSize * NumInputs);
+			/////Predicted Position Initialize
+			const void* PredictedPositionRawData = Params.PredictedPositions.GetData();
+			int NumVectors = Params.PredictedPositions.Num();
+			int PredictedPositionVectorSize = sizeof(FVector3f);
 
-			PassParameters->Input = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(InputBuffer, PF_R32_SINT));
+			FRDGBufferRef PredictedPositionsBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("PredictedPositionsVectorBuffer"),
+				sizeof(FVector3f),
+				NumVectors,
+				PredictedPositionRawData,
+				PredictedPositionVectorSize * NumVectors
+			);
+			PassParameters->PredictedPositions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PredictedPositionsBuffer));
 
-			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(
-				FRDGBufferDesc::CreateBufferDesc(sizeof(int32), 1),
-				TEXT("OutputBuffer"));
+			/////SpatialIndices Initialize
+			const void* SpatialIndicesRawData = Params.SpatialIndices.GetData();
+			int SpatialIndicesVectorSize = sizeof(FIntVector);
+			FRDGBufferRef SpatialIndicesBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("SpatialIndicesVectorBuffer"),
+				sizeof(FVector3f),
+				NumVectors,
+				SpatialIndicesRawData,
+				SpatialIndicesVectorSize * NumVectors
+			);
+			PassParameters->SpatialIndices = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(SpatialIndicesBuffer));
 
-			PassParameters->Output = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_SINT));
+			/////SpatialOffsets Initialize
+			const void* SpatialOffsetsRawData = Params.SpatialOffsets.GetData();
+			int SpatialOffsetsVectorSize = sizeof(int);
+			FRDGBufferRef SpatialOffsetsBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("SpatialOffsetsVectorBuffer"),
+				sizeof(int),
+				NumVectors,
+				SpatialOffsetsRawData,
+				SpatialOffsetsVectorSize * NumVectors
+			);
+			PassParameters->SpatialOffsets = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(SpatialOffsetsBuffer));
+
+
+			/////Output Densities Buffer Initialization
+			FRDGBufferRef DensitiesBuffer = GraphBuilder.CreateBuffer(
+				FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector2f), NumVectors),
+				TEXT("DensitiesBuffer"));
+
+			PassParameters->Densities = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(DensitiesBuffer));
 			
 
 			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
@@ -148,18 +189,20 @@ void FDensityKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHI
 
 			
 			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteDensityKernelOutput"));
-			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, OutputBuffer, 0u);
+			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, DensitiesBuffer, 0u);
 
-			auto RunnerFunc = [GPUBufferReadback, AsyncCallback](auto&& RunnerFunc) -> void {
+			auto RunnerFunc = [GPUBufferReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
 				if (GPUBufferReadback->IsReady()) {
 					
-					int32* Buffer = (int32*)GPUBufferReadback->Lock(1);
-					int OutVal = Buffer[0];
+					FVector2f* Buffer = (FVector2f*)GPUBufferReadback->Lock(1);
+					TArray<FVector2f> Densities;
+					Densities.SetNum(NumVectors);
+					FMemory::Memcpy(Densities.GetData(), Buffer, NumVectors * sizeof(FVector2f));
 					
 					GPUBufferReadback->Unlock();
 
-					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, OutVal]() {
-						AsyncCallback(OutVal);
+					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, Densities]() {
+						AsyncCallback(Densities);
 					});
 
 					delete GPUBufferReadback;

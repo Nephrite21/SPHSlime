@@ -1,8 +1,8 @@
 #include "/Engine/Public/Platform.ush"
 
-StructuredBuffer<double3> Positions;
-RWStructuredBuffer<double3> Velocities;
-RWStructuredBuffer<double3> PredictedPositions;
+StructuredBuffer<float3> Positions;
+RWStructuredBuffer<float3> Velocities;
+RWStructuredBuffer<float3> PredictedPositions;
 
 int NumParticles;
 float gravity;
@@ -17,12 +17,12 @@ void ExternalForceKernel(
     if (id >= NumParticles)
         return;
     
-    double3 currentVel = Velocities[id];
-    double3 currentPos = Positions[id];
+    float3 currentVel = Velocities[id];
+    float3 currentPos = Positions[id];
     
-    double3 gravityForce = double3(0, 0, -10.0);
+    float3 gravityForce = float3(0, 0, -10.0);
     
-    double3 newVel = currentVel + gravityForce/120.0;
+    float3 newVel = currentVel + gravityForce/120.0;
     
     Velocities[id] = newVel;
     

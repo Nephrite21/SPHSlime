@@ -1,13 +1,63 @@
 #include "/Engine/Public/Platform.ush"
+#include "../SpatialHash.usf"
+#include "../FluidMaths3D.usf"
 
-Buffer<int> Input;
-RWBuffer<int> Output;
+int NumParticles;
+float SmoothingRadius;
+
+StructuredBuffer<float3> PredictedPositions;
+StructuredBuffer<int3> SpatialIndices;
+StructuredBuffer<int> SpatialOffsets;
+RWStructuredBuffer<float2> Densities;
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
-void DensityKernel(
-	uint3 DispatchThreadId : SV_DispatchThreadID,
-	uint GroupIndex : SV_GroupIndex )
+void DensityKernel(int3 DispatchThreadId : SV_DispatchThreadID)
 {
-	// Outputs one number
-	Output[0] = Input[0] * Input[1];
+    int id = DispatchThreadId.x;
+    if (id >= NumParticles)
+        return;
+
+    float SR = float(SmoothingRadius);
+    
+    float3 pos = PredictedPositions[id];
+    int3 originCell = GetCell3D(pos, SR);
+    float sqrRadius = SR * SR;
+    float density = 0;
+    float nearDensity = 0;
+
+	// Neighbour search
+    for (int i = 0; i < 27; i++)
+    {
+        int hash = HashCell3D(originCell + offsets3D[i]);
+        int key = KeyFromHash(hash, NumParticles);
+        int currIndex = SpatialOffsets[key];
+
+        while (currIndex < NumParticles)
+        {
+            int3 indexData = SpatialIndices[currIndex];
+            currIndex++;
+			// Exit if no longer looking at correct bin
+            if (indexData[2] != key)
+                break;
+			// Skip if hash does not match
+            if (indexData[1] != hash)
+                continue;
+
+            int neighbourIndex = indexData[0];
+            float3 neighbourPos = PredictedPositions[neighbourIndex];
+            float3 offsetToNeighbour = neighbourPos - pos;
+            float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
+
+			// Skip if not within radius
+            if (sqrDstToNeighbour > sqrRadius)
+                continue;
+
+			// Calculate density and near density
+            float dst = sqrt((float) sqrDstToNeighbour);
+            density += DensityKernelFunc(dst, SmoothingRadius);
+            nearDensity += NearDensityKernel(dst, SmoothingRadius);
+        }
+    }
+	
+    Densities[id] = float2(density, nearDensity);
 }

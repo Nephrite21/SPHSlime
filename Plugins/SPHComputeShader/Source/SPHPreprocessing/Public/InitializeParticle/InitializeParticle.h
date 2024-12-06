@@ -15,11 +15,11 @@ struct SPHPREPROCESSING_API FInitializeParticleDispatchParams
 	int Z;
 
 	
-	TArray<FVector> InputVectors;
+	TArray<FVector3f> InputVectors;
 	int NumParticles;
 	float SpawnLength;
 
-	TArray<FVector> OutputVectors;
+	TArray<FVector3f> OutputVectors;
 	
 	
 
@@ -38,13 +38,13 @@ public:
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
 		FInitializeParticleDispatchParams Params,
-		TFunction<void(const TArray<FVector>& OutputVectors)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& OutputVectors)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
 		FInitializeParticleDispatchParams Params,
-		TFunction<void(const TArray<FVector>& OutputVectors)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& OutputVectors)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
@@ -57,7 +57,7 @@ public:
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
 		FInitializeParticleDispatchParams Params,
-		TFunction<void(const TArray<FVector>& OutputVectors)> AsyncCallback
+		TFunction<void(const TArray<FVector3f>& OutputVectors)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
@@ -70,7 +70,7 @@ public:
 
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInitializeParticleLibrary_AsyncExecutionCompleted, const TArray<FVector>&, Value);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInitializeParticleLibrary_AsyncExecutionCompleted, const TArray<FVector3f>&, Value);
 
 
 UCLASS() // Change the _API to match your project
@@ -95,7 +95,7 @@ public:
 		UE_LOG(LogTemp, Log, TEXT("NumParticles : %d"), NumParticles);
 		Params.SpawnLength = SpawnLength;
 
-		TFunction<void(const TArray<FVector>&)> Callback = [this](const TArray<FVector>& OutVectors) {
+		TFunction<void(const TArray<FVector3f>&)> Callback = [this](const TArray<FVector3f>& OutVectors) {
 			this->Completed.Broadcast(OutVectors);
 			};
 
@@ -106,7 +106,7 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UInitializeParticleLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject,int NumParticles, float spawnLength, const TArray<FVector>& InputVectors) {
+	static UInitializeParticleLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject,int NumParticles, float spawnLength, const TArray<FVector3f>& InputVectors) {
 		UInitializeParticleLibrary_AsyncExecution* Action = NewObject<UInitializeParticleLibrary_AsyncExecution>();
 		Action->InputVectors = InputVectors;
 		Action->NumParticles = NumParticles;
@@ -119,7 +119,7 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnInitializeParticleLibrary_AsyncExecutionCompleted Completed;
 
-	TArray<FVector> InputVectors;
+	TArray<FVector3f> InputVectors;
 	int NumParticles;
 	float SpawnLength;
 	

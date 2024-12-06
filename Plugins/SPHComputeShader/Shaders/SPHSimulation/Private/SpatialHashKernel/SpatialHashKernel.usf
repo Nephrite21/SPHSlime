@@ -1,69 +1,12 @@
 #include "/Engine/Public/Platform.ush"
+#include "../SpatialHash.usf"
 
 int NumParticles;
 float SmoothingRadius;
 
-StructuredBuffer<double3> PredictedPositions;
+StructuredBuffer<float3> PredictedPositions;
 RWStructuredBuffer<int> SpatialOffsets;
 RWStructuredBuffer<int3> SpatialIndices;
-
-static const int3 offsets3D[27] =
-{
-    int3(-1, -1, -1),
-	int3(-1, -1, 0),
-	int3(-1, -1, 1),
-	int3(-1, 0, -1),
-	int3(-1, 0, 0),
-	int3(-1, 0, 1),
-	int3(-1, 1, -1),
-	int3(-1, 1, 0),
-	int3(-1, 1, 1),
-	int3(0, -1, -1),
-	int3(0, -1, 0),
-	int3(0, -1, 1),
-	int3(0, 0, -1),
-	int3(0, 0, 0),
-	int3(0, 0, 1),
-	int3(0, 1, -1),
-	int3(0, 1, 0),
-	int3(0, 1, 1),
-	int3(1, -1, -1),
-	int3(1, -1, 0),
-	int3(1, -1, 1),
-	int3(1, 0, -1),
-	int3(1, 0, 0),
-	int3(1, 0, 1),
-	int3(1, 1, -1),
-	int3(1, 1, 0),
-	int3(1, 1, 1)
-};
-
-static const uint hashK1 = 15823;
-static const uint hashK2 = 9737333;
-static const uint hashK3 = 440817757;
-
-
-
-int3 GetCell3D(double3 position, double radius)
-{
-    float r = float(radius);
-    return int3(
-        floor(float(position.x) / r),
-        floor(float(position.y) / r),
-        floor(float(position.z) / r)
-    );
-}
-
-// Hash cell coordinate to a single unsigned integer
-int HashCell3D(int3 cell)
-{
-    return (cell.x * hashK1) + (cell.y * hashK2) + (cell.z * hashK3);
-}
-
-int KeyFromHash(int hash, int tableSize)
-{
-    return hash % tableSize;
-}
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void SpatialHashKernel(
@@ -73,11 +16,9 @@ void SpatialHashKernel(
     int id = DispatchThreadId.x;
     if (id >= NumParticles)
         return;
-    double SR = double(SmoothingRadius);
     SpatialOffsets[id] = NumParticles;
-    int3 cell = GetCell3D(PredictedPositions[id], SR);
+    int3 cell = GetCell3D(PredictedPositions[id], SmoothingRadius);
     int hash = HashCell3D(cell);
     int key = KeyFromHash(hash, NumParticles);
     SpatialIndices[id] = int3(id, hash, key);
-
 }

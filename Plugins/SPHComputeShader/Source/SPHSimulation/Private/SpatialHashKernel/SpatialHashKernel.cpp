@@ -56,7 +56,7 @@ public:
 		SHADER_PARAMETER(int, NumParticles)
 		SHADER_PARAMETER(float, SmoothingRadius)
 
-		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector>, PredictedPositions)
+		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector3f>, PredictedPositions)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<int>, SpatialOffsets)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FIntVector>, SpatialIndices)
 		
@@ -128,11 +128,11 @@ void FSpatialHashKernelInterface::DispatchRenderThread(FRHICommandListImmediate&
 			
 			const void* RawData = (void*)Params.PredictedPositions.GetData();
 			int NumVectors = Params.PredictedPositions.Num();
-			int VectorSize = sizeof(FVector);
+			int VectorSize = sizeof(FVector3f);
 			FRDGBufferRef PredictedPositionsBuffer = CreateStructuredBuffer(
 				GraphBuilder,
 				TEXT("PredictedPositionsVectorBuffer"),
-				sizeof(FVector),
+				sizeof(FVector3f),
 				NumVectors,
 				RawData,
 				VectorSize * NumVectors
