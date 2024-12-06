@@ -105,10 +105,10 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UGPUSortLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<int>& Offsets, const TArray<FIntVector>& Entries, int NumParticles) {
+	static UGPUSortLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<int>& SpatialOffsets, const TArray<FIntVector>& SpatialIndicies, int NumParticles) {
 		UGPUSortLibrary_AsyncExecution* Action = NewObject<UGPUSortLibrary_AsyncExecution>();
-		Action->Entries = Entries;
-		Action->Offsets = Offsets;
+		Action->Entries = SpatialIndicies;
+		Action->Offsets = SpatialOffsets;
 		Action->NumParticles = NumParticles;
 		Action->RegisterWithGameInstance(WorldContextObject);
 
