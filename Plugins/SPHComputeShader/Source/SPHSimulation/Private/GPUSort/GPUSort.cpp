@@ -136,7 +136,7 @@ public:
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 		SHADER_PARAMETER(int, NumEntries)
 
-		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FIntVector>, Entries)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FIntVector>, Entries)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<int>, Offsets)
 
 
@@ -253,11 +253,22 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 			}
 			FCalculateOffsetsKernel::FParameters* CalcOffsetPassParameters = GraphBuilder.AllocParameters<FCalculateOffsetsKernel::FParameters>();
 
-			FRDGBufferRef OffsetsBuffer = GraphBuilder.CreateBuffer(
-				FRDGBufferDesc::CreateStructuredDesc(sizeof(int), NumVectors),
-				TEXT("Offsets"));
+			const void* OffsetsRawData = (void*)Params.Offsets.GetData();
+			int OffsetVectorSize = sizeof(int);
+			FRDGBufferRef OffsetsBuffer = CreateStructuredBuffer(
+				GraphBuilder,
+				TEXT("OffsetsBuffer"),
+				sizeof(int),
+				NumVectors,
+				OffsetsRawData,
+				OffsetVectorSize * NumVectors
+			);
 
-			CalcOffsetPassParameters->Entries = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(EntriesBuffer));
+			/*FRDGBufferRef OffsetsBuffer = GraphBuilder.CreateBuffer(
+				FRDGBufferDesc::CreateStructuredDesc(sizeof(int), NumVectors),
+				TEXT("Offsets"));*/
+
+			CalcOffsetPassParameters->Entries = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(EntriesBuffer));
 			CalcOffsetPassParameters->Offsets = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OffsetsBuffer));
 			CalcOffsetPassParameters->NumEntries = NumVectors;
 
@@ -272,7 +283,7 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 			FRHIGPUBufferReadback* EntriesReadback = new FRHIGPUBufferReadback(TEXT("SortedEntriesOutput"));
 			FRHIGPUBufferReadback* CalcedOffsetsReadback = new FRHIGPUBufferReadback(TEXT("SortedEntriesOutput"));
 			AddEnqueueCopyPass(GraphBuilder, EntriesReadback, EntriesBuffer, 0u);
-			AddEnqueueCopyPass(GraphBuilder, CalcedOffsetsReadback, EntriesBuffer, 0u);
+			AddEnqueueCopyPass(GraphBuilder, CalcedOffsetsReadback, OffsetsBuffer, 0u);
 
 			auto RunnerFunc = [EntriesReadback, CalcedOffsetsReadback, AsyncCallback, NumVectors](auto&& RunnerFunc) -> void {
 				if (EntriesReadback->IsReady() && CalcedOffsetsReadback->IsReady()) {

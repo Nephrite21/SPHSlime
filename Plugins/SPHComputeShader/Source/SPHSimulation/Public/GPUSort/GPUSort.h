@@ -16,8 +16,8 @@ struct SPHSIMULATION_API FGPUSortDispatchParams
 
 	
 	int NumParticles;
-	TArray<FIntVector> Entries; //input And Output //Output 굳이 해야하는지?
-	TArray<int> Offsets; //Output
+	TArray<FIntVector> Entries; //Input And Output //Output 굳이 해야하는지?
+	TArray<int> Offsets; //Input And Output
 
 	
 	
@@ -89,6 +89,7 @@ public:
 
 		Params.Entries = Entries;
 		Params.NumParticles = NumParticles;
+		Params.Offsets = Offsets;
 
 		TFunction<void(const TArray<FIntVector>& ,const TArray<int>&)> Callback =
 			[this](const TArray<FIntVector>& Entries ,const TArray<int>& Offsets) {
@@ -104,9 +105,10 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UGPUSortLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FIntVector>& Entries, int NumParticles) {
+	static UGPUSortLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<int>& Offsets, const TArray<FIntVector>& Entries, int NumParticles) {
 		UGPUSortLibrary_AsyncExecution* Action = NewObject<UGPUSortLibrary_AsyncExecution>();
 		Action->Entries = Entries;
+		Action->Offsets = Offsets;
 		Action->NumParticles = NumParticles;
 		Action->RegisterWithGameInstance(WorldContextObject);
 
@@ -117,6 +119,7 @@ public:
 	FOnGPUSortLibrary_AsyncExecutionCompleted Completed;
 
 	TArray<FIntVector> Entries;
+	TArray<int> Offsets;
 	
 	int NumParticles;
 	

@@ -10,6 +10,7 @@
 
 // 버퍼 선언
 RWStructuredBuffer<int3> Entries;
+RWStructuredBuffer<int> Offsets;
 int NumEntries;
 int GroupWidth;
 int GroupHeight;
@@ -37,7 +38,6 @@ void SortCS(int3 DTid : SV_DispatchThreadID)
     }
 }
 
-RWStructuredBuffer<int> Offsets;
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void CalculateOffsetsCS(int3 DispatchThreadId : SV_DispatchThreadID)
@@ -46,15 +46,14 @@ void CalculateOffsetsCS(int3 DispatchThreadId : SV_DispatchThreadID)
     if (id >= NumEntries)
         return;
     
-    int null = NumEntries;
-    
     int key = Entries[id].z;
     // 현재 엔트리의 해시값과 이전 엔트리의 해시값을 비교
-    int keyPrev = id == 0 ? null : Entries[id - 1].z;
+    int keyPrev = (id == 0) ? NumEntries : Entries[id - 1].z;
     
     // 해시값이 바뀌는 지점이나 첫 번째 엔트리인 경우 오프셋 설정
     if (key != keyPrev)
     {
         Offsets[key] = id;
     }
+    //Offsets[id] = Entries[1].z;
 }
