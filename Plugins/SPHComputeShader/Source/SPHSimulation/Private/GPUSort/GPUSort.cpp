@@ -207,7 +207,7 @@ void FGPUSortInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdLis
 
 		if (bIsSortShaderValid&& bIsCalcOffsetShaderValid) {
 			//FSortKernel::FParameters* SortPassParameters = GraphBuilder.AllocParameters<FSortKernel::FParameters>();
-			int numStages = FMath::Log2(double(FMath::RoundUpToPowerOfTwo(Params.NumParticles))); //오류 가능성 있음 
+			int numStages = FMath::CeilLogTwo(Params.NumParticles);// FMath::Log2(double(FMath::RoundUpToPowerOfTwo(Params.NumParticles))); //오류 가능성 있음 
 			
 			//재사용하는 버퍼에 대해서 for문 밖에서 선언
 			const void* RawData = (void*)Params.Entries.GetData();
