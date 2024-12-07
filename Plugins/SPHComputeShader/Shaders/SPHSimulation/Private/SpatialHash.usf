@@ -31,8 +31,8 @@ static const int3 offsets3D[27] =
 
 // Constants used for hashing
 static const int hashK1 = 15823;
-static const int hashK2 = 9737333;
-static const int hashK3 = 440817757;
+static const int hashK2 = 2269733;
+static const int hashK3 = 37139213;
 
 // Convert floating point position into an integer cell coordinate
 int3 GetCell3D(float3 position, float radius)

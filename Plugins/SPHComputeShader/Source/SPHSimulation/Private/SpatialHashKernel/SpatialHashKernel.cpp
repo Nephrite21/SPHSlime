@@ -140,13 +140,14 @@ void FSpatialHashKernelInterface::DispatchRenderThread(FRHICommandListImmediate&
 			PassParameters->PredictedPositions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PredictedPositionsBuffer));
 
 			const void* RawData1 = Params.SpatialOffsets.GetData();
+			int OffsetsVectorSize = sizeof(int);
 			FRDGBufferRef SpatialOffsetsBuffer = CreateStructuredBuffer(
 				GraphBuilder,
 				TEXT("SpatialOffsetsBuffer"),
 				sizeof(int),
 				NumVectors,
 				RawData1,
-				VectorSize * NumVectors
+				OffsetsVectorSize * NumVectors
 			);
 			PassParameters->SpatialOffsets = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(SpatialOffsetsBuffer));
 

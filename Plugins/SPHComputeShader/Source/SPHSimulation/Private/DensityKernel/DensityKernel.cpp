@@ -168,6 +168,9 @@ void FDensityKernelInterface::DispatchRenderThread(FRHICommandListImmediate& RHI
 			);
 			PassParameters->SpatialOffsets = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(SpatialOffsetsBuffer));
 
+			PassParameters->NumParticles = Params.NumParticles;
+			PassParameters->SmoothingRadius = Params.SmoothingRadius;
+
 
 			/////Output Densities Buffer Initialization
 			FRDGBufferRef DensitiesBuffer = GraphBuilder.CreateBuffer(

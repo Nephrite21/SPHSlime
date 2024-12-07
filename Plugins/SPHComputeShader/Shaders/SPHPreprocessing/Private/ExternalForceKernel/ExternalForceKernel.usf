@@ -20,7 +20,7 @@ void ExternalForceKernel(
     float3 currentVel = Velocities[id];
     float3 currentPos = Positions[id];
     
-    float3 gravityForce = float3(0, 0, -10.0);
+    float3 gravityForce = float3(0, 0, gravity);
     
     float3 newVel = currentVel + gravityForce/120.0;
     

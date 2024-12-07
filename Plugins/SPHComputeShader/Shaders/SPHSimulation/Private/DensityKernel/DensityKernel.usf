@@ -16,12 +16,10 @@ void DensityKernel(int3 DispatchThreadId : SV_DispatchThreadID)
     int id = DispatchThreadId.x;
     if (id >= NumParticles)
         return;
-
-    float SR = float(SmoothingRadius);
     
     float3 pos = PredictedPositions[id];
-    int3 originCell = GetCell3D(pos, SR);
-    float sqrRadius = SR * SR;
+    int3 originCell = GetCell3D(pos, SmoothingRadius);
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
     float density = 0;
     float nearDensity = 0;
 
@@ -53,7 +51,7 @@ void DensityKernel(int3 DispatchThreadId : SV_DispatchThreadID)
                 continue;
 
 			// Calculate density and near density
-            float dst = sqrt((float) sqrDstToNeighbour);
+            float dst = sqrt(sqrDstToNeighbour);
             density += DensityKernelFunc(dst, SmoothingRadius);
             nearDensity += NearDensityKernel(dst, SmoothingRadius);
         }
