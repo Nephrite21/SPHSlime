@@ -18,6 +18,7 @@ struct SPHPREPROCESSING_API FInitializeParticleDispatchParams
 	TArray<FVector3f> InputVectors;
 	int NumParticles;
 	float SpawnLength;
+	float boundsize;
 
 	TArray<FVector3f> OutputVectors;
 	
@@ -92,6 +93,7 @@ public:
 		FInitializeParticleDispatchParams Params(NumParticles, 1, 1);
 		Params.InputVectors = InputVectors;
 		Params.NumParticles = NumParticles;
+		Params.boundsize = boundsize;
 		UE_LOG(LogTemp, Log, TEXT("NumParticles : %d"), NumParticles);
 		Params.SpawnLength = SpawnLength;
 
@@ -106,11 +108,12 @@ public:
 	
 	
 	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UInitializeParticleLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject,int NumParticles, float spawnLength, const TArray<FVector3f>& InputVectors) {
+	static UInitializeParticleLibrary_AsyncExecution* ExecuteBaseComputeShader(UObject* WorldContextObject, const TArray<FVector3f>& InputVectors, int NumParticles, float spawnLength, float boundsize) {
 		UInitializeParticleLibrary_AsyncExecution* Action = NewObject<UInitializeParticleLibrary_AsyncExecution>();
 		Action->InputVectors = InputVectors;
 		Action->NumParticles = NumParticles;
 		Action->SpawnLength = spawnLength;
+		Action->boundsize = boundsize;
 		Action->RegisterWithGameInstance(WorldContextObject);
 
 		return Action;
@@ -122,5 +125,6 @@ public:
 	TArray<FVector3f> InputVectors;
 	int NumParticles;
 	float SpawnLength;
+	float boundsize;
 	
 };

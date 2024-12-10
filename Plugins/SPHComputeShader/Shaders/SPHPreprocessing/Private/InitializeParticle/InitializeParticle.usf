@@ -5,6 +5,7 @@ RWStructuredBuffer<float3> OutputVectors : register(u0);
 
 int NumParticles;
 float SpawnLength;
+float boundsize;
 
 float random(int seed)
 {
@@ -35,5 +36,6 @@ void InitializeParticle(
     {
         return;
     }
-    OutputVectors[ThreadId] = float3(random(ThreadId), random1(ThreadId), random2(ThreadId));
+    float halfbound = max(boundsize / 2.0, SpawnLength);
+    OutputVectors[ThreadId] = float3(random(ThreadId), random1(ThreadId), random2(ThreadId)) * halfbound;
 }

@@ -34,20 +34,41 @@ static const int hashK1 = 15823;
 static const int hashK2 = 2269733;
 static const int hashK3 = 37139213;
 
-// Convert floating point position into an integer cell coordinate
-int3 GetCell3D(float3 position, float radius)
-{
-    return (int3) floor(position / radius);
-}
-
-// Hash cell coordinate to a single unsigned integer
 int HashCell3D(int3 cell)
 {
-    cell = (int3) cell;
-    return (cell.x * hashK1) + (cell.y * hashK2) + (cell.z * hashK3);
+    uint x = abs(cell.x);
+    uint y = abs(cell.y);
+    uint z = abs(cell.z);
+    uint hash = (x * hashK1) ^ (y * hashK2) ^ (z * hashK3);
+    return int(hash);
 }
 
 int KeyFromHash(int hash, int tableSize)
 {
-    return hash % tableSize;
+    return abs(hash) % tableSize;
 }
+
+int3 GetCell3D(float3 position, float radius)
+{
+    radius = max(radius, 1e-6); // 0으로 나누기 방지
+    return (int3) floor(clamp(position / radius, -1e6, 1e6));
+}
+
+
+//// Convert floating point position into an integer cell coordinate
+//int3 GetCell3D(float3 position, float radius)
+//{
+//    return (int3) floor(position / radius);
+//}
+
+//// Hash cell coordinate to a single unsigned integer
+//int HashCell3D(int3 cell)
+//{
+//    cell = (int3) cell;
+//    return (cell.x * hashK1) + (cell.y * hashK2) + (cell.z * hashK3);
+//}
+
+//int KeyFromHash(int hash, int tableSize)
+//{
+//    return hash % tableSize;
+//}

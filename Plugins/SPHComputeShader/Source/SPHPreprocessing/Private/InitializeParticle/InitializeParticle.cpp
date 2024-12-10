@@ -54,6 +54,7 @@ public:
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 		SHADER_PARAMETER(int, NumParticles)
 		SHADER_PARAMETER(float, SpawnLength)
+		SHADER_PARAMETER(float, boundsize)
 		
 		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FVector3f>, InputVectors)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector3f>, OutputVectors)
@@ -140,6 +141,7 @@ void FInitializeParticleInterface::DispatchRenderThread(FRHICommandListImmediate
 
 			PassParameters->NumParticles = Params.NumParticles;
 			PassParameters->SpawnLength = Params.SpawnLength;
+			PassParameters->boundsize = Params.boundsize;
 
 
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(

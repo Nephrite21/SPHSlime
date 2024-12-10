@@ -16,15 +16,13 @@ void ExternalForceKernel(
     uint id = DispatchThreadId.x;
     if (id >= NumParticles)
         return;
+    float deltaTime = 1.0 / 120.0;
     
-    float3 currentVel = Velocities[id];
-    float3 currentPos = Positions[id];
+    float3 gravityForce = float3(0, 0, -gravity);
     
-    float3 gravityForce = float3(0, 0, gravity);
-    
-    float3 newVel = currentVel + gravityForce/120.0;
+    float3 newVel = Velocities[id] + gravityForce * deltaTime;
     
     Velocities[id] = newVel;
     
-    PredictedPositions[id] = currentPos + newVel/120.0;
+    PredictedPositions[id] = Positions[id] + newVel * deltaTime;
 }

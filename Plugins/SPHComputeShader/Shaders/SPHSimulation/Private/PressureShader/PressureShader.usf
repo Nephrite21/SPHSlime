@@ -25,99 +25,28 @@ float NearPressureFromDensity(float nearDensity)
     return nearDensity * NearPressureMultiplier;
 }
 
-//[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
-//void PressureShader(
-//	uint3 DispatchThreadId : SV_DispatchThreadID,
-//	uint GroupIndex : SV_GroupIndex )
-//{
-//    float deltaTime = 1.0/120.0;
-//    int id = DispatchThreadId.x;
-//    if (id >= NumParticles)
-//        return;
-
-//	// Calculate pressure
-//    float density = Densities[id][0];
-//    float densityNear = Densities[id][1];
-//    float pressure = PressureFromDensity(density);
-//    float nearPressure = NearPressureFromDensity(densityNear);
-//    float3 pressureForce = 0;
-	
-//    float3 pos = PredictedPositions[id];
-//    int3 originCell = GetCell3D(pos, SmoothingRadius);
-//    float sqrRadius = SmoothingRadius * SmoothingRadius;
-
-//	// Neighbour search
-//    for (int i = 0; i < 27; i++)
-//    {
-//        int hash = HashCell3D(originCell + offsets3D[i]);
-//        int key = KeyFromHash(hash, NumParticles);
-//        int currIndex = SpatialOffsets[key];
-
-//        while (currIndex < NumParticles)
-//        {
-//            int3 indexData = SpatialIndices[currIndex];
-//            currIndex++;
-//			// Exit if no longer looking at correct bin
-//            if (indexData[2] != key)
-//                break;
-//			// Skip if hash does not match
-//            if (indexData[1] != hash)
-//                continue;
-
-//            uint neighbourIndex = indexData[0];
-//			// Skip if looking at self
-//            if (neighbourIndex == id)
-//                continue;
-
-//            float3 neighbourPos = PredictedPositions[neighbourIndex];
-//            float3 offsetToNeighbour = neighbourPos - pos;
-//            float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
-
-//			// Skip if not within radius
-//            if (sqrDstToNeighbour > sqrRadius)
-//                continue;
-
-//			// Calculate pressure force
-//            float densityNeighbour = Densities[neighbourIndex][0];
-//            float nearDensityNeighbour = Densities[neighbourIndex][1];
-//            float neighbourPressure = PressureFromDensity(densityNeighbour);
-//            float neighbourPressureNear = NearPressureFromDensity(nearDensityNeighbour);
-
-//            float sharedPressure = (pressure + neighbourPressure) / 2;
-//            float sharedNearPressure = (nearPressure + neighbourPressureNear) / 2;
-
-//            float dst = sqrt(sqrDstToNeighbour);
-//            float3 dir = dst > 0 ? offsetToNeighbour / dst : float3(0, 1, 0);
-
-//            pressureForce += dir * DensityDerivative(dst, SmoothingRadius) * sharedPressure / densityNeighbour;
-//            pressureForce += dir * NearDensityDerivative(dst, SmoothingRadius) * sharedNearPressure / nearDensityNeighbour;
-//        }
-//    }
-
-//    float3 acceleration = pressureForce / density;
-//    Velocities[id] += acceleration * deltaTime;
-//}
-
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
-void PressureShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex)
+void PressureShader(
+	uint3 DispatchThreadId : SV_DispatchThreadID,
+	uint GroupIndex : SV_GroupIndex)
 {
     float deltaTime = 1.0 / 120.0;
     int id = DispatchThreadId.x;
     if (id >= NumParticles)
         return;
 
-   // Calculate pressure
-    float density = max(Densities[id][0], 1e-6);
-    float densityNear = max(Densities[id][1], 0.0);
+	// Calculate pressure
+    float density = Densities[id][0];
+    float densityNear = Densities[id][1];
     float pressure = PressureFromDensity(density);
     float nearPressure = NearPressureFromDensity(densityNear);
     float3 pressureForce = 0;
-   
+	
     float3 pos = PredictedPositions[id];
     int3 originCell = GetCell3D(pos, SmoothingRadius);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
-   // Neighbour search
+	// Neighbour search
     for (int i = 0; i < 27; i++)
     {
         int hash = HashCell3D(originCell + offsets3D[i]);
@@ -128,18 +57,15 @@ void PressureShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupInde
         {
             int3 indexData = SpatialIndices[currIndex];
             currIndex++;
-
-           // Exit if no longer looking at correct bin
+			// Exit if no longer looking at correct bin
             if (indexData[2] != key)
                 break;
-
-           // Skip if hash does not match
+			// Skip if hash does not match
             if (indexData[1] != hash)
                 continue;
 
             uint neighbourIndex = indexData[0];
-
-           // Skip if looking at self
+			// Skip if looking at self
             if (neighbourIndex == id)
                 continue;
 
@@ -147,33 +73,31 @@ void PressureShader(uint3 DispatchThreadId : SV_DispatchThreadID, uint GroupInde
             float3 offsetToNeighbour = neighbourPos - pos;
             float sqrDstToNeighbour = dot(offsetToNeighbour, offsetToNeighbour);
 
-           // Skip if not within radius
+			// Skip if not within radius
             if (sqrDstToNeighbour > sqrRadius)
                 continue;
 
-           // Calculate pressure force
-            float densityNeighbour = max(Densities[neighbourIndex][0], 1e-6);
-            float nearDensityNeighbour = max(Densities[neighbourIndex][1], 0.0);
+			// Calculate pressure force
+            float densityNeighbour = max(Densities[neighbourIndex][0], 1e-10);
+            float nearDensityNeighbour = max(Densities[neighbourIndex][1], 1e-10);
             float neighbourPressure = PressureFromDensity(densityNeighbour);
             float neighbourPressureNear = NearPressureFromDensity(nearDensityNeighbour);
-            float sharedPressure = (pressure + neighbourPressure) / 2.0;
-            float sharedNearPressure = (nearPressure + neighbourPressureNear) / 2.0;
-            float dst = sqrt(max(sqrDstToNeighbour, 0.0));
-            float3 dir = (dst > 1e-6) ? offsetToNeighbour / dst : float3(0, 1, 0);
+
+            float sharedPressure = (pressure + neighbourPressure) / 2;
+            float sharedNearPressure = (nearPressure + neighbourPressureNear) / 2;
+
+            float dst = sqrt(sqrDstToNeighbour);
+            float3 dir = dst > 0 ? offsetToNeighbour / dst : float3(0, 0, 1);
 
             pressureForce += dir * DensityDerivative(dst, SmoothingRadius) * sharedPressure / densityNeighbour;
             pressureForce += dir * NearDensityDerivative(dst, SmoothingRadius) * sharedNearPressure / nearDensityNeighbour;
         }
     }
 
-    float3 acceleration = pressureForce / max(density, 1e-6);
-    float3 deltaV = acceleration * deltaTime;
-   
-   // NaN check
-    if (any(isnan(deltaV)))
-    {
-        deltaV = 0;
-    }
-   
-    Velocities[id] += deltaV;
+    float3 acceleration = pressureForce / density;
+    //if (any(isnan(acceleration)))
+    //{
+    //    acceleration = 0;
+    //}
+    Velocities[id] = Velocities[id]*0.8 + acceleration * deltaTime;
 }
